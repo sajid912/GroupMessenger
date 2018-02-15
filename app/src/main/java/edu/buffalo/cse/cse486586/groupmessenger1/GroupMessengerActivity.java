@@ -1,10 +1,31 @@
 package edu.buffalo.cse.cse486586.groupmessenger1;
 
 import android.app.Activity;
+import android.content.Context;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.Menu;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
+import static android.content.ContentValues.TAG;
 
 /**
  * GroupMessengerActivity is the main Activity for the assignment.
@@ -12,12 +33,34 @@ import android.widget.TextView;
  * @author stevko
  *
  */
-public class GroupMessengerActivity extends Activity {
+public class GroupMessengerActivity extends Activity implements View.OnClickListener {
+    static final String REMOTE_PORT0 = "11108";
+    static final String REMOTE_PORT1 = "11112";
+    static final String REMOTE_PORT2 = "11116";
+    static final String REMOTE_PORT3 = "11120";
+    static final String REMOTE_PORT4 = "11124";
+    static final int SERVER_PORT = 10000;
+    private EditText messageSpace;
+    private MySharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_group_messenger);
+
+
+       /* TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+        String portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
+        String myPort = String.valueOf((Integer.parseInt(portStr) * 2));*/
+
+        try {
+            ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
+            new ServerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
+
+        } catch (IOException e) {
+            Log.e(TAG, "Can't create a ServerSocket");
+            return;
+        }
 
         /*
          * TODO: Use the TextView to display your messages. Though there is no grading component
@@ -38,6 +81,13 @@ public class GroupMessengerActivity extends Activity {
          * In your implementation you need to get the message from the input box (EditText)
          * and send it to other AVDs.
          */
+        Button sendButton = (Button) findViewById(R.id.button4);
+        sendButton.setOnClickListener(this);
+
+        messageSpace = (EditText) findViewById(R.id.editText1);
+        sharedPreferences = new MySharedPreferences(getApplicationContext());
+        sharedPreferences.clearPreferences();
+
     }
 
     @Override
@@ -46,4 +96,98 @@ public class GroupMessengerActivity extends Activity {
         getMenuInflater().inflate(R.menu.activity_group_messenger, menu);
         return true;
     }
+
+    @Override
+    public void onClick(View view) {
+
+        if (view.getId() == R.id.button4) {
+            String message = messageSpace.getText().toString();
+            messageSpace.setText("");
+            new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, message);
+
+        }
+    }
+
+    private class ServerTask extends AsyncTask<ServerSocket, String, Void> {
+
+        @Override
+        protected Void doInBackground(ServerSocket... sockets) {
+            ServerSocket serverSocket = sockets[0];
+            String message;
+            Log.d(TAG, "Server task");
+
+            while (true) {
+                try {
+                    Socket socket = serverSocket.accept();
+                    InputStream inputStream = socket.getInputStream();
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+                    message = bufferedReader.readLine();
+                    publishProgress(message);
+
+                    bufferedReader.close();
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+            //return null;
+        }
+
+        protected void onProgressUpdate(String... strings) {
+
+            String message = strings[0].trim() + "\n";
+
+            Log.d(TAG, "Message received:" + message);
+            int currentSeqNum = sharedPreferences.getSequenceNumber();
+            String fileName = Integer.toString(currentSeqNum);
+            FileOutputStream outputStream;
+
+            try {
+                outputStream = openFileOutput(fileName, Context.MODE_PRIVATE);
+                outputStream.write(message.getBytes());
+                outputStream.close();
+                sharedPreferences.setSequenceNumber(++currentSeqNum);
+            } catch (Exception e) {
+                Log.e(TAG, "File write failed");
+            }
+
+            return;
+        }
+    }
+
+    private class ClientTask extends AsyncTask<String, Void, Void> {
+
+        @Override
+        protected Void doInBackground(String... msgs) {
+
+            String[] ports = new String[]{REMOTE_PORT0, REMOTE_PORT1, REMOTE_PORT2, REMOTE_PORT3, REMOTE_PORT4};
+
+            for (String remotePort : ports) {
+                try {
+                    Socket socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
+                            Integer.parseInt(remotePort));
+
+                    String msgToSend = msgs[0];
+                    Log.d(TAG, "Msg to send:" + msgToSend);
+
+                    OutputStream outputStream = socket.getOutputStream();
+                    BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
+                    bufferedWriter.write(msgToSend);
+
+                    bufferedWriter.flush();
+                    bufferedWriter.close();
+                    socket.close();
+
+                } catch (UnknownHostException e) {
+                    Log.e(TAG, "ClientTask UnknownHostException");
+                } catch (IOException e) {
+                    Log.e(TAG, "ClientTask socket IOException");
+                }
+            }
+
+            return null;
+        }
+    }
+
 }
