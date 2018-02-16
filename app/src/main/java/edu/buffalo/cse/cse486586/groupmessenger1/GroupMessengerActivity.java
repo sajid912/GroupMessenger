@@ -1,7 +1,8 @@
 package edu.buffalo.cse.cse486586.groupmessenger1;
 
 import android.app.Activity;
-import android.content.Context;
+import android.content.ContentValues;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
@@ -14,7 +15,6 @@ import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -34,12 +34,13 @@ import static android.content.ContentValues.TAG;
  *
  */
 public class GroupMessengerActivity extends Activity implements View.OnClickListener {
-    static final String REMOTE_PORT0 = "11108";
-    static final String REMOTE_PORT1 = "11112";
-    static final String REMOTE_PORT2 = "11116";
-    static final String REMOTE_PORT3 = "11120";
-    static final String REMOTE_PORT4 = "11124";
-    static final int SERVER_PORT = 10000;
+
+    private static final String REMOTE_PORT0 = "11108";
+    private static final String REMOTE_PORT1 = "11112";
+    private static final String REMOTE_PORT2 = "11116";
+    private static final String REMOTE_PORT3 = "11120";
+    private static final String REMOTE_PORT4 = "11124";
+    private static final int SERVER_PORT = 10000;
     private EditText messageSpace;
     private MySharedPreferences sharedPreferences;
 
@@ -47,11 +48,6 @@ public class GroupMessengerActivity extends Activity implements View.OnClickList
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_group_messenger);
-
-
-       /* TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
-        String portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
-        String myPort = String.valueOf((Integer.parseInt(portStr) * 2));*/
 
         try {
             ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
@@ -85,6 +81,7 @@ public class GroupMessengerActivity extends Activity implements View.OnClickList
         sendButton.setOnClickListener(this);
 
         messageSpace = (EditText) findViewById(R.id.editText1);
+
         sharedPreferences = new MySharedPreferences(getApplicationContext());
         sharedPreferences.clearPreferences();
 
@@ -106,6 +103,24 @@ public class GroupMessengerActivity extends Activity implements View.OnClickList
             new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, message);
 
         }
+    }
+
+    private void writeServerMsgToFile(String filename, String message) {
+        Uri uri = new Uri.Builder().authority("edu.buffalo.cse.cse486586.groupmessenger1.provider")
+                .scheme("content").build();
+
+        ContentValues contentValues = new ContentValues();
+        contentValues.put("key", filename);
+        contentValues.put("value", message);
+
+        try {
+            getContentResolver().insert(uri, contentValues);
+
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+        }
+
+
     }
 
     private class ServerTask extends AsyncTask<ServerSocket, String, Void> {
@@ -137,20 +152,13 @@ public class GroupMessengerActivity extends Activity implements View.OnClickList
         protected void onProgressUpdate(String... strings) {
 
             String message = strings[0].trim() + "\n";
-
             Log.d(TAG, "Message received:" + message);
+
             int currentSeqNum = sharedPreferences.getSequenceNumber();
             String fileName = Integer.toString(currentSeqNum);
-            FileOutputStream outputStream;
 
-            try {
-                outputStream = openFileOutput(fileName, Context.MODE_PRIVATE);
-                outputStream.write(message.getBytes());
-                outputStream.close();
-                sharedPreferences.setSequenceNumber(++currentSeqNum);
-            } catch (Exception e) {
-                Log.e(TAG, "File write failed");
-            }
+            writeServerMsgToFile(fileName, message);
+            sharedPreferences.setSequenceNumber(++currentSeqNum);
 
             return;
         }

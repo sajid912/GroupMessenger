@@ -35,35 +35,6 @@ import static android.content.ContentValues.TAG;
  */
 public class GroupMessengerProvider extends ContentProvider {
 
-  /*  public static final int VER = 1;
-    private static final String GROUP_MESSENGER_DB = "groupMessenger.db"; // DB name
-    private static final String GROUP_MESSENGER_TABLE = "groupMessengerTable"; // Table name
-
-    private static final String KEY_ID = "_id";
-    private static final String KEY_FIELD = "key"; // Table keys
-    private static final String VALUE_FIELD = "value";
-
-    private static final String CREATE_TABLE = "CREATE TABLE " + GROUP_MESSENGER_TABLE + " (" + KEY_ID + " TEXT , " + KEY_FIELD + " TEXT , " + VALUE_FIELD + " TEXT)";
-    private static final String DROP_TABLE = "DROP TABLE IF EXISTS " + GROUP_MESSENGER_TABLE;
-    private static final String[] ALL_FIELDS = new String[]{KEY_ID, KEY_FIELD, VALUE_FIELD};
-
-
-    private SQLiteDatabase db;
-    private MySQLiteOpenHelper mySQLiteOpenHelper;
-
-    protected void openDB() throws SQLiteException {
-        db = mySQLiteOpenHelper.getWritableDatabase();
-    }
-
-    protected void closeDB() {
-        db.close();
-    }
-
-    protected void clearDB()
-    {
-        db.execSQL("delete from " + GROUP_MESSENGER_TABLE);
-    }*/
-
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
         // You do not need to implement this.
@@ -103,21 +74,6 @@ public class GroupMessengerProvider extends ContentProvider {
             Log.e(TAG, "File write failed");
         }
 
-    /*    openDB();
-        long rowID = db.insert(GROUP_MESSENGER_TABLE, null, values);
-        closeDB();
-
-        if (rowID > 0) {
-            Uri newUri = ContentUris.withAppendedId(uri, rowID);
-            getContext().getContentResolver().notifyChange(newUri, null);
-            return newUri;
-        }
-
-        throw new SQLException("Failed to add a record into " + uri);*/
-
-
-
-
         return uri;
 
     }
@@ -151,12 +107,6 @@ public class GroupMessengerProvider extends ContentProvider {
          */
         Log.v("query", selection);
 
-        /*openDB();
-        Cursor cursor = db.query(GROUP_MESSENGER_TABLE, ALL_FIELDS, selection, selectionArgs, null, null, sortOrder);
-        cursor.setNotificationUri(getContext().getContentResolver(), uri);
-        closeDB();
-        return cursor;*/
-
         try {
 
             FileInputStream inputStream = getContext().openFileInput(selection);
@@ -175,27 +125,4 @@ public class GroupMessengerProvider extends ContentProvider {
 
         return null;
     }
-
- /*   class MySQLiteOpenHelper extends SQLiteOpenHelper {
-
-        public MySQLiteOpenHelper(Context context) {
-            super(context, GROUP_MESSENGER_DB, null, VER);
-        }
-
-        @Override
-        public void onCreate(SQLiteDatabase db) {
-
-            db.execSQL(CREATE_TABLE);
-
-        }
-
-        @Override
-        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-
-            if (newVersion > oldVersion) {
-                db.execSQL(DROP_TABLE);
-                onCreate(db);
-            }
-        }
-    }*/
 }
