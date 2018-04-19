@@ -1,4 +1,4 @@
-# GroupMessenger1-DS
+# GroupMessenger1-Distributed Systems
 Design a group messenger that can send messages to multiple AVDs and store received messages in a persistent key-value storage
 
 This project focuses on the following:
